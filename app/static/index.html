@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brother QL Print Service</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script>
+        (function() {
+            var theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="header-left">
+                <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
+                    <line x1="7" y1="18" x2="17" y2="18"/>
+                </svg>
+                <h1>Brother QL Print Service</h1>
+            </div>
+            <div class="header-right">
+                <span id="printer-status-badge" class="badge badge-unknown">Printer: Unknown</span>
+                <button id="theme-toggle" class="theme-toggle" title="Toggle theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" data-tab="print">Print</button>
+            <button class="tab" data-tab="history">History</button>
+            <button class="tab" data-tab="settings">Settings</button>
+        </nav>
+
+        <!-- Print Tab -->
+        <div id="tab-print" class="tab-content active">
+            <div class="upload-section">
+                <div id="drop-zone" class="drop-zone">
+                    <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <p class="drop-text">Drag &amp; drop a file here, or click to browse</p>
+                    <p class="drop-hint">Supports PNG, JPG, GIF, BMP, WebP, TIFF, PDF, SVG</p>
+                    <input type="file" id="file-input" hidden>
+                </div>
+            </div>
+
+            <div id="file-info" class="file-info hidden">
+                <div class="file-info-grid">
+                    <div class="info-card">
+                        <h3>File</h3>
+                        <dl>
+                            <dt>Name</dt><dd id="info-filename">—</dd>
+                            <dt>Type</dt><dd id="info-filetype">—</dd>
+                            <dt>Pages</dt><dd id="info-pages">—</dd>
+                        </dl>
+                    </div>
+                    <div class="info-card">
+                        <h3>Dimensions</h3>
+                        <dl>
+                            <dt>Size (mm)</dt><dd id="info-dim-mm">—</dd>
+                            <dt>Size (px)</dt><dd id="info-dim-px">—</dd>
+                        </dl>
+                    </div>
+                    <div class="info-card">
+                        <h3>Orientation</h3>
+                        <dl>
+                            <dt>Detected</dt><dd id="info-orientation">—</dd>
+                            <dt>Rotation</dt><dd id="info-rotation">—</dd>
+                            <dt>Status</dt><dd id="info-orient-status">—</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div id="orientation-warning" class="warning-box hidden">
+                    <p id="warning-text"></p>
+                    <div class="warning-controls">
+                        <label>
+                            Orientation:
+                            <select id="manual-orientation">
+                                <option value="">— Select —</option>
+                                <option value="portrait">Portrait</option>
+                                <option value="landscape">Landscape</option>
+                            </select>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="manual-resize">
+                            Allow resize
+                        </label>
+                    </div>
+                </div>
+
+                <div class="print-controls">
+                    <div class="control-row">
+                        <label>
+                            Label:
+                            <select id="print-label"></select>
+                        </label>
+                        <label>
+                            Copies:
+                            <input type="number" id="print-copies" value="1" min="1" max="99">
+                        </label>
+                    </div>
+                    <div class="button-row">
+                        <button id="btn-preview" class="btn btn-secondary" disabled>Generate Preview</button>
+                        <button id="btn-print" class="btn btn-primary" disabled>Print</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="preview-section" class="preview-section hidden">
+                <h3>Preview</h3>
+                <div class="preview-container">
+                    <img id="preview-img" src="" alt="Print preview">
+                </div>
+                <div class="preview-info">
+                    <p id="preview-orientation-info"></p>
+                </div>
+                <div class="button-row">
+                    <button id="btn-confirm-print" class="btn btn-primary">Confirm &amp; Print</button>
+                    <button id="btn-cancel-preview" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="tab-history" class="tab-content">
+            <div class="history-header">
+                <h2>Print History</h2>
+                <button id="btn-refresh-history" class="btn btn-secondary btn-small">Refresh</button>
+            </div>
+            <div id="history-list" class="history-list">
+                <p class="empty-state">No prints yet.</p>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content">
+            <div class="settings-header">
+                <h2>Settings</h2>
+                <button id="btn-save-settings" class="btn btn-primary btn-small">Save</button>
+            </div>
+            <div id="settings-form" class="settings-form">
+                <div class="settings-section">
+                    <h3>Printer</h3>
+                    <div class="settings-grid">
+                        <label>
+                            Model
+                            <select id="set-model"></select>
+                        </label>
+                        <label>
+                            Backend
+                            <select id="set-backend">
+                                <option value="pyusb">pyusb</option>
+                                <option value="linux_kernel">linux_kernel</option>
+                                <option value="network">network</option>
+                            </select>
+                        </label>
+                        <label>
+                            Identifier
+                            <input type="text" id="set-identifier" placeholder="usb://04f9:2027">
+                        </label>
+                        <label>
+                            Label
+                            <select id="set-label"></select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Printing</h3>
+                    <div class="settings-grid">
+                        <label>
+                            Tape width (mm)
+                            <select id="set-tape-width">
+                                <option value="12">12</option>
+                                <option value="29">29</option>
+                                <option value="38">38</option>
+                                <option value="50">50</option>
+                                <option value="54">54</option>
+                                <option value="62">62</option>
+                                <option value="102">102</option>
+                                <option value="103">103</option>
+                            </select>
+                        </label>
+                        <label>
+                            Rotate
+                            <select id="set-rotate">
+                                <option value="auto">auto</option>
+                                <option value="0">0</option>
+                                <option value="90">90</option>
+                                <option value="180">180</option>
+                                <option value="270">270</option>
+                            </select>
+                        </label>
+                        <label>
+                            Threshold (%)
+                            <input type="number" id="set-threshold" min="0" max="100" value="70">
+                        </label>
+                        <label>
+                            Copies
+                            <input type="number" id="set-copies" min="1" max="99" value="1">
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="set-dither">
+                            Dither
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="set-compress">
+                            Compress
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="set-cut" checked>
+                            Cut after print
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="set-hq" checked>
+                            High quality
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="set-dpi600">
+                            600 dpi
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>UI</h3>
+                    <div class="settings-grid">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="set-show-preview" checked>
+                            Show preview before printing
+                        </label>
+                        <label>
+                            Max history entries
+                            <input type="number" id="set-max-history" min="10" max="1000" value="100">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div id="settings-saved-msg" class="saved-msg hidden">Settings saved.</div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

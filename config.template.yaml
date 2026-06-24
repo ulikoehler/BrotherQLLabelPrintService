@@ -1,0 +1,83 @@
+# Brother QL Print Service Configuration
+# Copy this file to config.yaml and adjust as needed.
+
+printer:
+  # Brother printer model (run `brother_ql info models` for full list)
+  # Examples: QL-500, QL-550, QL-560, QL-570, QL-580N, QL-700, QL-710W,
+  #           QL-720NW, QL-800, QL-810W, QL-820NWB, QL-1050, QL-1060N
+  model: QL-560
+
+  # Backend for communicating with the printer:
+  #   pyusb       – USB via pyusb (cross-platform, requires libusb)
+  #   linux_kernel – Linux kernel device /dev/usb/lp0
+  #   network     – Networked printer (tcp://host:port)
+  backend: pyusb
+
+  # Printer identifier:
+  #   USB:    usb://04f9:2027
+  #   Linux:  /dev/usb/lp0
+  #   Network: tcp://192.168.1.21:9100
+  identifier: "usb://04f9:2027"
+
+  # Label type (run `brother_ql info labels` for full list):
+  #   Endless:  12, 29, 38, 50, 54, 62, 102, 103
+  #   Die-cut:  17x54, 17x87, 23x23, 29x42, 29x90, 39x90, 39x48,
+  #             52x29, 54x29, 62x29, 62x100, 102x51, 102x152, 103x164
+  #   Round:    d12, d24, d58
+  label: "62"
+
+server:
+  # Bind address
+  host: "0.0.0.0"
+  # Port
+  port: 8080
+  # Number of uvicorn workers (keep low for resource efficiency)
+  workers: 2
+
+printing:
+  # Tape width in mm — must match the label roll installed in the printer.
+  # Used for auto-orientation: when one dimension of the input matches this
+  # width, the orientation is determined automatically.
+  # Valid values: 12, 29, 38, 50, 54, 62, 102, 103
+  tape_width_mm: 62
+
+  # Default rotation: auto | 0 | 90 | 180 | 270
+  # "auto" lets the server determine orientation based on dimensions.
+  rotate: "auto"
+
+  # Threshold (0-100 percent) for black/white pixel discrimination.
+  # Ignored when dither is true.
+  threshold: 70
+
+  # Use dithering instead of threshold for B/W conversion.
+  dither: false
+
+  # Enable packbits compression (not all models support this).
+  compress: false
+
+  # Cut the tape after printing.
+  cut: true
+
+  # High quality mode (default). Set false for low quality / faster printing.
+  hq: true
+
+  # Enable 600x300 dpi mode (supported models only).
+  # Provide input images at 600x600 dpi.
+  dpi_600: false
+
+  # Default number of copies per print job.
+  copies: 1
+
+ui:
+  # Show a preview before printing. Set to false for "print without preview" mode.
+  show_preview: true
+
+  # Maximum number of print history entries to keep.
+  max_history: 100
+
+storage:
+  # Base data directory (mapped as Docker volume).
+  data_dir: "/data"
+
+  # Queue/history file path (YAML format).
+  queue_file: "/data/queue.yaml"

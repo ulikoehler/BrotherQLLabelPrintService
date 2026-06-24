@@ -1,0 +1,25 @@
+services:
+  brotherql-print:
+    build: .
+    container_name: brotherql-print
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Data directory: stores uploads, prints, previews, and queue.yaml
+      - ./data:/data
+      # Configuration file
+      - ./config.yaml:/app/config.yaml
+    # USB device mapping for printer access.
+    # Adjust the device path to match your system (e.g., /dev/usb/lp0).
+    # For pyusb backend, map the USB bus device instead:
+    #   devices:
+    #     - /dev/bus/usb:/dev/bus/usb
+    # For linux_kernel backend, map the lp device:
+    #   devices:
+    #     - /dev/usb/lp0:/dev/usb/lp0
+    # Uncomment and adjust as needed:
+    # devices:
+    #   - /dev/usb/lp0:/dev/usb/lp0
+    # Alternatively, use privileged mode (less secure):
+    # privileged: true
