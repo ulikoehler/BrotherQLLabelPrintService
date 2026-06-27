@@ -24,7 +24,59 @@ cp config.template.yaml config.yaml
 
 Edit `config.yaml` to match your printer model and connection.
 
-### 2. Docker USB Access
+### 2. Run Without Docker
+
+#### Install system dependencies
+
+**Debian/Ubuntu:**
+```bash
+sudo apt-get update
+sudo apt-get install -y poppler-utils librsvg2-bin libusb-1.0-0 libglib2.0-0
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S poppler librsvg libusb glib2
+```
+
+**Fedora:**
+```bash
+sudo dnf install -y poppler-utils librsvg2 libusb1 glib2
+```
+
+#### Install Python dependencies
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+#### Adjust storage paths
+
+In `config.yaml`, change the Docker-only `/data` paths to a local directory:
+
+```yaml
+storage:
+  data_dir: "./data"
+  queue_file: "./data/queue.yaml"
+```
+
+#### Create the data directory
+
+```bash
+mkdir -p data/uploads data/prints data/previews
+```
+
+#### Run the server
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 2
+```
+
+The service will be available at `http://localhost:8080`.
+
+### 3. Docker USB Access
 
 Edit `docker-compose.yml` and uncomment/adjust the `devices` section for your setup:
 
@@ -45,7 +97,7 @@ devices:
 privileged: true
 ```
 
-### 3. Build and Run
+### 4. Build and Run
 
 ```bash
 docker compose up -d --build
