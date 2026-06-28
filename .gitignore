@@ -1,4 +1,5 @@
 config.yaml
+docker-compose.yaml
 data/
 __pycache__/
 *.pyc
