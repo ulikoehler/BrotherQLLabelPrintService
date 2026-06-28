@@ -14,9 +14,13 @@ A lightweight FastAPI-based web service for printing labels on Brother QL series
 - **Docker deployment**: Single container with configurable USB device mapping
 - **Resource-efficient**: FastAPI with limited workers for low memory footprint
 
-## Quick Setup (Docker)
+## Quick Start
 
-Get up and running in under a minute using the pre-built Docker Hub image — no need to clone the repo:
+### Docker (Recommended)
+
+#### Using the pre-built Docker Hub image
+
+No need to clone the repo — just download the templates and start the service:
 
 ```bash
 # Download the config template and Docker Compose template
@@ -34,25 +38,50 @@ $EDITOR config.yaml
 docker compose up -d
 ```
 
-The service will be available at `http://localhost:8080`.
-
-> **USB access:** Edit `docker-compose.yaml` and uncomment the `devices` or `privileged` section for your printer. See [Docker USB Access](#docker-usb-access) below.
-
-Pre-built image: [ulikoehler/brotherql-label-print-service](https://hub.docker.com/r/ulikoehler/brotherql-label-print-service) on Docker Hub.
-
----
-
-## Quick Start
-
-### 1. Configure
+If you've already cloned the repo, use the local templates instead:
 
 ```bash
 cp config.template.yaml config.yaml
+cp docker-compose.template.yaml docker-compose.yaml
+$EDITOR config.yaml
+docker compose up -d
 ```
 
-Edit `config.yaml` to match your printer model and connection.
+The service will be available at `http://localhost:8080`.
 
-### 2. Run Without Docker
+Pre-built image: [ulikoehler/brotherql-label-print-service](https://hub.docker.com/r/ulikoehler/brotherql-label-print-service) on Docker Hub.
+
+#### Building locally
+
+```bash
+cp config.template.yaml config.yaml
+cp docker-compose.local_build.template.yaml docker-compose.yaml
+$EDITOR config.yaml
+docker compose up -d --build
+```
+
+#### Docker USB Access
+
+Edit your `docker-compose.yaml` and uncomment/adjust the `devices` section for your setup:
+
+**For `pyusb` backend** (recommended):
+```yaml
+devices:
+  - /dev/bus/usb:/dev/bus/usb
+```
+
+**For `linux_kernel` backend**:
+```yaml
+devices:
+  - /dev/usb/lp0:/dev/usb/lp0
+```
+
+**Or use privileged mode** (simplest, less secure):
+```yaml
+privileged: true
+```
+
+### Run Without Docker
 
 #### Install system dependencies
 
@@ -80,9 +109,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### Adjust storage paths
+#### Configure
 
-In `config.yaml`, change the Docker-only `/data` paths to a local directory:
+```bash
+cp config.template.yaml config.yaml
+```
+
+Edit `config.yaml` to match your printer model and connection. Also change the Docker-only `/data` paths to a local directory:
 
 ```yaml
 storage:
@@ -103,47 +136,6 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 2
 ```
 
 The service will be available at `http://localhost:8080`.
-
-### 3. Docker USB Access
-
-Edit your `docker-compose.yaml` (copied from `docker-compose.template.yaml` or `docker-compose.local_build.template.yaml`) and uncomment/adjust the `devices` section for your setup:
-
-**For `pyusb` backend** (recommended):
-```yaml
-devices:
-  - /dev/bus/usb:/dev/bus/usb
-```
-
-**For `linux_kernel` backend**:
-```yaml
-devices:
-  - /dev/usb/lp0:/dev/usb/lp0
-```
-
-**Or use privileged mode** (simplest, less secure):
-```yaml
-privileged: true
-```
-
-### 4. Build and Run
-
-**Using the pre-built Docker Hub image** (recommended — uses `docker-compose.template.yaml`):
-
-```bash
-cp docker-compose.template.yaml docker-compose.yaml
-docker compose up -d
-```
-
-**Building locally** (uses `docker-compose.local_build.template.yaml`):
-
-```bash
-cp docker-compose.local_build.template.yaml docker-compose.yaml
-docker compose up -d --build
-```
-
-The service will be available at `http://localhost:8080`.
-
-The pre-built image is available on [Docker Hub](https://hub.docker.com/r/ulikoehler/brotherql-label-print-service).
 
 ## Configuration
 
