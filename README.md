@@ -14,6 +14,34 @@ A lightweight FastAPI-based web service for printing labels on Brother QL series
 - **Docker deployment**: Single container with configurable USB device mapping
 - **Resource-efficient**: FastAPI with limited workers for low memory footprint
 
+## Quick Setup (Docker)
+
+Get up and running in under a minute using the pre-built Docker Hub image — no need to clone the repo:
+
+```bash
+# Download the config template and Docker Compose template
+BASE=https://raw.githubusercontent.com/ulikoehler/BrotherQLLabelPrintService/main
+curl -fsSL "$BASE/config.template.yaml" -o config.yaml
+curl -fsSL "$BASE/docker-compose.template.yaml" -o docker-compose.yaml
+
+# Create the data directory
+mkdir -p data
+
+# Edit config.yaml to match your printer (model, backend, identifier, label)
+$EDITOR config.yaml
+
+# Start the service
+docker compose up -d
+```
+
+The service will be available at `http://localhost:8080`.
+
+> **USB access:** Edit `docker-compose.yaml` and uncomment the `devices` or `privileged` section for your printer. See [Docker USB Access](#docker-usb-access) below.
+
+Pre-built image: [ulikoehler/brotherql-label-print-service](https://hub.docker.com/r/ulikoehler/brotherql-label-print-service) on Docker Hub.
+
+---
+
 ## Quick Start
 
 ### 1. Configure
@@ -78,7 +106,7 @@ The service will be available at `http://localhost:8080`.
 
 ### 3. Docker USB Access
 
-Edit `docker-compose.yml` and uncomment/adjust the `devices` section for your setup:
+Edit your `docker-compose.yaml` (copied from `docker-compose.template.yaml` or `docker-compose.local_build.template.yaml`) and uncomment/adjust the `devices` section for your setup:
 
 **For `pyusb` backend** (recommended):
 ```yaml
@@ -99,11 +127,23 @@ privileged: true
 
 ### 4. Build and Run
 
+**Using the pre-built Docker Hub image** (recommended — uses `docker-compose.template.yaml`):
+
 ```bash
+cp docker-compose.template.yaml docker-compose.yaml
+docker compose up -d
+```
+
+**Building locally** (uses `docker-compose.local_build.template.yaml`):
+
+```bash
+cp docker-compose.local_build.template.yaml docker-compose.yaml
 docker compose up -d --build
 ```
 
 The service will be available at `http://localhost:8080`.
+
+The pre-built image is available on [Docker Hub](https://hub.docker.com/r/ulikoehler/brotherql-label-print-service).
 
 ## Configuration
 
@@ -406,12 +446,15 @@ for item in resp.json():
 
 ```
 BrotherQLPrint/
-├── docker-compose.yml       # Docker Compose configuration
-├── Dockerfile               # Container image definition
-├── config.template.yaml     # Annotated config template
-├── config.yaml              # Actual configuration (gitignored)
-├── requirements.txt         # Python dependencies
-├── README.md                # This file
+├── docker-compose.template.yaml          # Docker Compose template (pre-built image)
+├── docker-compose.local_build.template.yaml  # Docker Compose template (local build)
+├── docker-compose.yaml                   # Actual compose file (copied from template, gitignored)
+├── Dockerfile                            # Container image definition
+├── publish-docker.sh                     # Script to build & push image to Docker Hub
+├── config.template.yaml                  # Annotated config template
+├── config.yaml                           # Actual configuration (gitignored)
+├── requirements.txt                      # Python dependencies
+├── README.md                             # This file
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI application with all endpoints
