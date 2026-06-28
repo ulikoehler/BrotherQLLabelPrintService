@@ -2,6 +2,32 @@
 
 A lightweight FastAPI-based web service for printing labels on Brother QL series label printers (e.g. QL-560). Provides a visual web UI for uploading images/PDFs/SVGs, previewing prints, managing a print queue, and configuring printer settings. Deployed via Docker Compose with local volume mounts.
 
+## TLDR Install
+
+```bash
+# 1. Download config and Docker Compose templates
+BASE=https://raw.githubusercontent.com/ulikoehler/BrotherQLLabelPrintService/main
+curl -fsSL "$BASE/config.template.yaml" -o config.yaml
+curl -fsSL "$BASE/docker-compose.template.yaml" -o docker-compose.yaml
+mkdir -p data
+
+# 2. Edit config.yaml — set your printer model, backend, identifier, and label
+$EDITOR config.yaml
+
+# 3. Edit docker-compose.yaml — uncomment the USB device section for your printer
+$EDITOR docker-compose.yaml
+
+# 4. Start the service
+docker compose up -d
+
+# 5. (Optional) Create a systemd service so it starts on boot
+curl -fsSL https://techoverflow.net/scripts/create-docker-compose-service.sh | sudo bash /dev/stdin
+```
+
+The service is now available at `http://localhost:8080`.
+
+> **Step 5** uses the [create-docker-compose-service script](https://techoverflow.net/2020/10/24/create-a-systemd-service-for-your-docker-compose-project-in-10-seconds/) to automatically create a systemd service that runs `docker compose up -d` on boot.
+
 ## Features
 
 - **Web UI**: Drag-and-drop upload, server-side preview, print history, and settings — all in a clean, modern interface
