@@ -6,7 +6,7 @@ A lightweight FastAPI-based web service for printing labels on Brother QL series
 
 ```bash
 # 1. Download config and Docker Compose templates
-BASE=https://raw.githubusercontent.com/ulikoehler/BrotherQLLabelPrintService/main
+BASE=https://raw.githubusercontent.com/ulikoehler/BrotherQLLabelPrintService/master
 curl -fsSL "$BASE/config.template.yaml" -o config.yaml
 curl -fsSL "$BASE/docker-compose.template.yaml" -o docker-compose.yaml
 mkdir -p data
@@ -50,7 +50,7 @@ No need to clone the repo — just download the templates and start the service:
 
 ```bash
 # Download the config template and Docker Compose template
-BASE=https://raw.githubusercontent.com/ulikoehler/BrotherQLLabelPrintService/main
+BASE=https://raw.githubusercontent.com/ulikoehler/BrotherQLLabelPrintService/master
 curl -fsSL "$BASE/config.template.yaml" -o config.yaml
 curl -fsSL "$BASE/docker-compose.template.yaml" -o docker-compose.yaml
 
