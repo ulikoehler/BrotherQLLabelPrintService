@@ -129,9 +129,14 @@
             </div>
 
             <div id="preview-section" class="preview-section hidden">
-                <h3>Preview</h3>
+                <h3>Preview <span id="preview-page-indicator" class="page-indicator hidden"></span></h3>
                 <div class="preview-container">
                     <img id="preview-img" src="" alt="Print preview">
+                </div>
+                <div id="preview-nav" class="preview-nav hidden">
+                    <button id="btn-prev-page" class="btn btn-secondary btn-small" disabled>&larr; Prev</button>
+                    <span id="preview-page-count"></span>
+                    <button id="btn-next-page" class="btn btn-secondary btn-small" disabled>Next &rarr;</button>
                 </div>
                 <div class="preview-info">
                     <p id="preview-orientation-info"></p>
@@ -240,6 +245,20 @@
                         <label class="checkbox-label">
                             <input type="checkbox" id="set-dpi600">
                             600 dpi
+                        </label>
+                        <label>
+                            Copy order
+                            <select id="set-copy-order">
+                                <option value="sequential">Sequential (1,2,3,1,2,3)</option>
+                                <option value="grouped">Grouped (1,1,2,2,3,3)</option>
+                            </select>
+                        </label>
+                        <label>
+                            On print error
+                            <select id="set-on-print-error">
+                                <option value="stop">Stop job</option>
+                                <option value="continue">Continue, mark error</option>
+                            </select>
                         </label>
                     </div>
                 </div>

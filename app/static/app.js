@@ -2,6 +2,8 @@
 
 let currentFileId = null;
 let currentPreviewData = null;
+let currentPreviewPages = [];
+let currentPreviewPageIdx = 0;
 let settings = null;
 let labels = [];
 let models = [];
@@ -153,13 +155,51 @@ el('btn-preview').addEventListener('click', async () => {
         }
         const data = await res.json();
         currentPreviewData = data;
-        el('preview-img').src = data.preview_url + '?t=' + Date.now();
+        currentPreviewPages = data.previews || [];
+        currentPreviewPageIdx = 0;
+        renderPreviewPage();
         el('preview-orientation-info').textContent =
             `Orientation: ${data.orientation}, Rotation: ${data.rotation}°, ${data.reason}`;
         el('preview-section').classList.remove('hidden');
         showToast('Preview ready', 'success');
     } catch (e) {
         showToast(e.message, 'error');
+    }
+});
+
+function renderPreviewPage() {
+    if (currentPreviewPages.length === 0) return;
+    const page = currentPreviewPages[currentPreviewPageIdx];
+    el('preview-img').src = page.preview_url + '?t=' + Date.now();
+
+    const nav = el('preview-nav');
+    const indicator = el('preview-page-indicator');
+    const pageCount = el('preview-page-count');
+
+    if (currentPreviewPages.length > 1) {
+        nav.classList.remove('hidden');
+        indicator.classList.remove('hidden');
+        indicator.textContent = `(Page ${currentPreviewPageIdx + 1} of ${currentPreviewPages.length})`;
+        pageCount.textContent = `${currentPreviewPageIdx + 1} / ${currentPreviewPages.length}`;
+        el('btn-prev-page').disabled = currentPreviewPageIdx === 0;
+        el('btn-next-page').disabled = currentPreviewPageIdx === currentPreviewPages.length - 1;
+    } else {
+        nav.classList.add('hidden');
+        indicator.classList.add('hidden');
+    }
+}
+
+el('btn-prev-page').addEventListener('click', () => {
+    if (currentPreviewPageIdx > 0) {
+        currentPreviewPageIdx--;
+        renderPreviewPage();
+    }
+});
+
+el('btn-next-page').addEventListener('click', () => {
+    if (currentPreviewPageIdx < currentPreviewPages.length - 1) {
+        currentPreviewPageIdx++;
+        renderPreviewPage();
     }
 });
 
@@ -217,6 +257,8 @@ async function doPrint() {
         el('file-info').classList.add('hidden');
         currentFileId = null;
         currentPreviewData = null;
+        currentPreviewPages = [];
+        currentPreviewPageIdx = 0;
     } catch (e) {
         showToast(e.message, 'error');
     }
@@ -241,18 +283,24 @@ async function loadHistory() {
                 : `<div class="history-thumb-placeholder">N/A</div>`;
 
             const statusClass = `status-${item.status}`;
+            const pagesBadge = item.num_pages > 1
+                ? `<span class="page-badge">${item.num_pages} pages</span>`
+                : '';
+            const errorInfo = item.page_error
+                ? `<span style="color:var(--error)">Page error: ${item.page_error}</span>`
+                : (item.error_message ? `<span style="color:var(--error)">Error: ${item.error_message}</span>` : '');
 
             return `
                 <div class="history-item">
                     ${thumb}
                     <div class="history-info">
-                        <div class="filename">${item.original_filename}</div>
+                        <div class="filename">${item.original_filename} ${pagesBadge}</div>
                         <div class="meta">
                             <span>${fmtDate(item.timestamp)}</span>
                             <span>${item.width_mm}×${item.height_mm}mm</span>
                             <span>Label: ${item.label}</span>
                             <span>Copies: ${item.copies}</span>
-                            ${item.error_message ? `<span style="color:var(--error)">Error: ${item.error_message}</span>` : ''}
+                            ${errorInfo}
                         </div>
                     </div>
                     <div class="history-actions">
@@ -320,6 +368,8 @@ async function loadSettings() {
         el('set-cut').checked = settings.printing.cut;
         el('set-hq').checked = settings.printing.hq;
         el('set-dpi600').checked = settings.printing.dpi_600;
+        el('set-copy-order').value = settings.printing.copy_order || 'sequential';
+        el('set-on-print-error').value = settings.printing.on_print_error || 'stop';
 
         el('set-show-preview').checked = settings.ui.show_preview;
         el('set-max-history').value = settings.ui.max_history;
@@ -351,6 +401,8 @@ el('btn-save-settings').addEventListener('click', async () => {
             cut: el('set-cut').checked,
             hq: el('set-hq').checked,
             dpi_600: el('set-dpi600').checked,
+            copy_order: el('set-copy-order').value,
+            on_print_error: el('set-on-print-error').value,
         },
         ui: {
             show_preview: el('set-show-preview').checked,

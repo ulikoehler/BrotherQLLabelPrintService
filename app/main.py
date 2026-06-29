@@ -79,28 +79,60 @@ async def process_queue():
             queue.update(item.id, status="printing")
 
             try:
-                # Run print in a thread to not block the event loop
                 print_config = config.printing
                 printer_config = config.printer
 
-                for copy_num in range(item.copies):
-                    await asyncio.to_thread(
-                        do_print,
-                        image_path=item.stored_filename,
-                        model=printer_config["model"],
-                        backend=printer_config["backend"],
-                        printer_identifier=printer_config["identifier"],
-                        label=item.label or printer_config["label"],
-                        rotate=str(item.rotation) if item.rotation else "auto",
-                        threshold=float(print_config["threshold"]),
-                        dither=print_config["dither"],
-                        compress=print_config["compress"],
-                        cut=print_config["cut"],
-                        hq=print_config["hq"],
-                        dpi_600=print_config["dpi_600"],
-                    )
+                # Determine the list of files to print
+                files_to_print = item.stored_filenames if item.stored_filenames else [item.stored_filename]
+                num_pages = len(files_to_print)
+                copies = item.copies
+                copy_order = print_config.get("copy_order", "sequential")
+                on_error = print_config.get("on_print_error", "stop")
 
-                queue.update(item.id, status="printed")
+                # Build print order
+                print_sequence = []
+                if copy_order == "grouped":
+                    # page1×copies, page2×copies, ...
+                    for f in files_to_print:
+                        for _ in range(copies):
+                            print_sequence.append(f)
+                else:
+                    # sequential: all pages, repeat per copy
+                    for _ in range(copies):
+                        for f in files_to_print:
+                            print_sequence.append(f)
+
+                page_error = ""
+                for seq_idx, file_path in enumerate(print_sequence):
+                    try:
+                        await asyncio.to_thread(
+                            do_print,
+                            image_path=file_path,
+                            model=printer_config["model"],
+                            backend=printer_config["backend"],
+                            printer_identifier=printer_config["identifier"],
+                            label=item.label or printer_config["label"],
+                            rotate=str(item.rotation) if item.rotation else "auto",
+                            threshold=float(print_config["threshold"]),
+                            dither=print_config["dither"],
+                            compress=print_config["compress"],
+                            cut=print_config["cut"],
+                            hq=print_config["hq"],
+                            dpi_600=print_config["dpi_600"],
+                        )
+                    except Exception as e:
+                        page_num = (seq_idx % num_pages) + 1 if copy_order == "sequential" else (seq_idx // copies) + 1
+                        err_msg = f"Page {page_num}/{num_pages}: {str(e)}"
+                        if on_error == "stop":
+                            raise Exception(err_msg)
+                        else:
+                            page_error = err_msg
+                            logger.error(f"Print error for {item.id}, continuing: {err_msg}")
+
+                if page_error:
+                    queue.update(item.id, status="failed", error_message=f"Partial failure: {page_error}", page_error=page_error)
+                else:
+                    queue.update(item.id, status="printed")
                 logger.info(f"Printed: {item.original_filename} (id={item.id})")
 
             except Exception as e:
@@ -134,6 +166,7 @@ class PreviewRequest(BaseModel):
     orientation: Optional[str] = None
     resize: bool = False
     label: Optional[str] = None
+    page: Optional[int] = None  # 1-indexed page number for multi-page PDFs
 
 
 class SettingsUpdate(BaseModel):
@@ -217,7 +250,10 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.post("/api/preview")
 async def create_preview(req: PreviewRequest):
-    """Generate a preview PNG for the given uploaded file."""
+    """Generate preview PNG(s) for the given uploaded file.
+    
+    For multi-page PDFs, returns previews for all pages.
+    """
     # Find the uploaded file
     upload_files = list(uploads_dir.glob(f"{req.file_id}.*"))
     if not upload_files:
@@ -257,31 +293,37 @@ async def create_preview(req: PreviewRequest):
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Conversion failed: {str(e)}")
 
-    first_png = png_paths[0]
+    # Generate preview for each page
+    pages = []
+    for idx, png_path in enumerate(png_paths):
+        page_num = idx + 1
+        preview_id = str(uuid.uuid4())
+        prepared_path = str(prints_dir / f"prepared_{preview_id}.png")
+        prepare_image_for_print(
+            png_path=png_path,
+            output_path=prepared_path,
+            tape_width_mm=tape_width,
+            orientation=orient_result.orientation or "portrait",
+            needs_resize=orient_result.needs_resize,
+        )
 
-    # Prepare image (resize/rotate)
-    preview_id = str(uuid.uuid4())
-    prepared_path = str(prints_dir / f"prepared_{preview_id}.png")
-    prepare_image_for_print(
-        png_path=first_png,
-        output_path=prepared_path,
-        tape_width_mm=tape_width,
-        orientation=orient_result.orientation or "portrait",
-        needs_resize=orient_result.needs_resize,
-    )
+        preview_path = str(previews_dir / f"{preview_id}.png")
+        generate_preview(prepared_path, preview_path, tape_width)
 
-    # Generate preview
-    preview_path = str(previews_dir / f"{preview_id}.png")
-    generate_preview(prepared_path, preview_path, tape_width)
+        pages.append({
+            "page_num": page_num,
+            "preview_id": preview_id,
+            "preview_url": f"/api/preview/{preview_id}",
+            "prepared_path": prepared_path,
+        })
 
     return {
-        "preview_id": preview_id,
-        "preview_url": f"/api/preview/{preview_id}",
+        "previews": pages,
+        "num_pages": len(pages),
         "orientation": orient_result.orientation,
         "rotation": orient_result.rotation,
         "needs_resize": orient_result.needs_resize,
         "reason": orient_result.reason,
-        "prepared_path": prepared_path,
         "dimensions_mm": {"width": w_mm, "height": h_mm},
     }
 
@@ -297,7 +339,11 @@ async def get_preview(preview_id: str):
 
 @app.post("/api/print")
 async def print_file(req: PrintRequest):
-    """Add a file to the print queue."""
+    """Add a file to the print queue.
+    
+    For multi-page PDFs, all pages are processed first.
+    If any page fails processing, no pages are queued.
+    """
     # Find the uploaded file
     upload_files = list(uploads_dir.glob(f"{req.file_id}.*"))
     if not upload_files:
@@ -338,33 +384,49 @@ async def print_file(req: PrintRequest):
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Conversion failed: {str(e)}")
 
-    first_png = png_paths[0]
-
-    # Prepare image
+    # Process ALL pages first — if any fails, abort without queuing
     print_id = str(uuid.uuid4())
-    prepared_path = str(prints_dir / f"print_{print_id}.png")
-    prepare_image_for_print(
-        png_path=first_png,
-        output_path=prepared_path,
-        tape_width_mm=tape_width,
-        orientation=orient_result.orientation or "portrait",
-        needs_resize=orient_result.needs_resize,
-    )
-
-    # Generate preview if enabled
+    prepared_paths = []
     preview_filename = ""
-    if config.ui["show_preview"]:
+
+    for idx, png_path in enumerate(png_paths):
+        page_id = str(uuid.uuid4())
+        prepared_path = str(prints_dir / f"print_{page_id}.png")
+        try:
+            prepare_image_for_print(
+                png_path=png_path,
+                output_path=prepared_path,
+                tape_width_mm=tape_width,
+                orientation=orient_result.orientation or "portrait",
+                needs_resize=orient_result.needs_resize,
+            )
+        except Exception as e:
+            # Clean up any already-prepared pages
+            for p in prepared_paths:
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+            raise HTTPException(
+                status_code=422,
+                detail=f"Failed to process page {idx + 1} of {len(png_paths)}: {str(e)}",
+            )
+        prepared_paths.append(prepared_path)
+
+    # Generate preview for first page if enabled
+    if config.ui["show_preview"] and prepared_paths:
         preview_filename = str(previews_dir / f"{print_id}.png")
-        generate_preview(prepared_path, preview_filename, tape_width)
+        generate_preview(prepared_paths[0], preview_filename, tape_width)
         preview_filename = f"{print_id}.png"
 
     # Get original filename
     original_name = upload_path.name
+    num_pages = len(prepared_paths)
 
-    # Create queue item
+    # Create queue item — single entry for all pages
     item = create_queue_item(
         original_filename=original_name,
-        stored_filename=prepared_path,
+        stored_filename=prepared_paths[0],
         label=label,
         rotation=orient_result.rotation,
         copies=req.copies,
@@ -372,6 +434,8 @@ async def print_file(req: PrintRequest):
         width_mm=w_mm,
         height_mm=h_mm,
         preview_filename=preview_filename,
+        stored_filenames=prepared_paths,
+        num_pages=num_pages,
     )
     queue.add(item)
 

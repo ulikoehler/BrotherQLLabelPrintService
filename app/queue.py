@@ -22,6 +22,9 @@ class QueueItem:
         height_mm: float = 0,
         error_message: str = "",
         preview_filename: str = "",
+        stored_filenames: list = None,
+        num_pages: int = 1,
+        page_error: str = "",
     ):
         self.id = item_id
         self.original_filename = original_filename
@@ -36,6 +39,9 @@ class QueueItem:
         self.height_mm = height_mm
         self.error_message = error_message
         self.preview_filename = preview_filename
+        self.stored_filenames = stored_filenames or []
+        self.num_pages = num_pages
+        self.page_error = page_error
 
     def to_dict(self) -> dict:
         return {
@@ -52,6 +58,9 @@ class QueueItem:
             "height_mm": self.height_mm,
             "error_message": self.error_message,
             "preview_filename": self.preview_filename,
+            "stored_filenames": self.stored_filenames,
+            "num_pages": self.num_pages,
+            "page_error": self.page_error,
         }
 
     @classmethod
@@ -70,6 +79,9 @@ class QueueItem:
             height_mm=d.get("height_mm", 0),
             error_message=d.get("error_message", ""),
             preview_filename=d.get("preview_filename", ""),
+            stored_filenames=d.get("stored_filenames", []),
+            num_pages=d.get("num_pages", 1),
+            page_error=d.get("page_error", ""),
         )
 
 
@@ -161,6 +173,8 @@ def create_queue_item(
     width_mm: float = 0,
     height_mm: float = 0,
     preview_filename: str = "",
+    stored_filenames: list = None,
+    num_pages: int = 1,
 ) -> QueueItem:
     return QueueItem(
         item_id=str(uuid.uuid4()),
@@ -175,4 +189,6 @@ def create_queue_item(
         width_mm=width_mm,
         height_mm=height_mm,
         preview_filename=preview_filename,
+        stored_filenames=stored_filenames or [],
+        num_pages=num_pages,
     )
