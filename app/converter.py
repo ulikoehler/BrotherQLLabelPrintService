@@ -323,18 +323,25 @@ def generate_preview(
     output_path: str,
     tape_width_mm: int = 62,
     max_preview_width: int = 400,
+    low_res: bool = False,
 ) -> str:
-    """Generate a smaller preview PNG for the UI."""
+    """Generate a preview PNG for the UI.
+
+    When low_res is True, the image is scaled down to max_preview_width for
+    faster loading. When False (default), the full-resolution prepared image
+    is saved as-is so the user can inspect print quality.
+    """
     img = Image.open(png_path)
     if img.mode != "RGB":
         img = img.convert("RGB")
 
-    w, h = img.size
-    scale = min(max_preview_width / w, max_preview_width / h)
-    if scale < 1.0:
-        new_w = int(w * scale)
-        new_h = int(h * scale)
-        img = img.resize((new_w, new_h), Image.LANCZOS)
+    if low_res:
+        w, h = img.size
+        scale = min(max_preview_width / w, max_preview_width / h)
+        if scale < 1.0:
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            img = img.resize((new_w, new_h), Image.LANCZOS)
 
     img.save(output_path, "PNG")
     return output_path

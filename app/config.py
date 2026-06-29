@@ -30,6 +30,7 @@ DEFAULT_CONFIG = {
     },
     "ui": {
         "show_preview": True,
+        "low_res_preview": False,
         "max_history": 100,
     },
     "storage": {

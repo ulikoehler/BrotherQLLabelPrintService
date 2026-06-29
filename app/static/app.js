@@ -175,7 +175,14 @@ el('btn-preview').addEventListener('click', async () => {
 function renderPreviewPage() {
     if (currentPreviewPages.length === 0) return;
     const page = currentPreviewPages[currentPreviewPageIdx];
-    el('preview-img').src = page.preview_url + '?t=' + Date.now();
+    const previewImg = el('preview-img');
+    previewImg.src = page.preview_url + '?t=' + Date.now();
+
+    const isLowRes = settings && settings.ui && settings.ui.low_res_preview;
+    previewImg.classList.toggle('low-res', !!isLowRes);
+
+    const preparedFilename = page.prepared_path.split('/').pop();
+    el('preview-fullres-link').href = '/api/files/' + preparedFilename;
 
     const nav = el('preview-nav');
     const indicator = el('preview-page-indicator');
@@ -382,6 +389,7 @@ async function loadSettings() {
         el('set-on-print-error').value = settings.printing.on_print_error || 'stop';
 
         el('set-show-preview').checked = settings.ui.show_preview;
+        el('set-low-res-preview').checked = settings.ui.low_res_preview || false;
         el('set-max-history').value = settings.ui.max_history;
 
         // Set print label to current config
@@ -416,6 +424,7 @@ el('btn-save-settings').addEventListener('click', async () => {
         },
         ui: {
             show_preview: el('set-show-preview').checked,
+            low_res_preview: el('set-low-res-preview').checked,
             max_history: parseInt(el('set-max-history').value),
         },
     };

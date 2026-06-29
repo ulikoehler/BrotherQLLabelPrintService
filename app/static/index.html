@@ -68,7 +68,9 @@
             <div id="preview-section" class="preview-section hidden">
                 <h3>Preview <span id="preview-page-indicator" class="page-indicator hidden"></span></h3>
                 <div class="preview-container">
-                    <img id="preview-img" src="" alt="Print preview">
+                    <a id="preview-fullres-link" href="#" target="_blank" rel="noopener">
+                        <img id="preview-img" src="" alt="Print preview">
+                    </a>
                 </div>
                 <div id="preview-nav" class="preview-nav hidden">
                     <button id="btn-prev-page" class="btn btn-secondary btn-small" disabled>&larr; Prev</button>
@@ -270,6 +272,10 @@
                         <label class="checkbox-label">
                             <input type="checkbox" id="set-show-preview" checked>
                             Show preview before printing
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="set-low-res-preview">
+                            Low-res preview <span style="font-size:0.75rem;color:var(--text-dim)">(faster but less accurate)</span>
                         </label>
                         <label>
                             Max history entries

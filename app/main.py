@@ -313,7 +313,10 @@ async def create_preview(req: PreviewRequest):
         convert_debug.append(f"  Page {page_num} prepared: {prepared_path} — {_pw}x{_ph}px")
 
         preview_path = str(previews_dir / f"{preview_id}.png")
-        generate_preview(prepared_path, preview_path, tape_width)
+        generate_preview(
+            prepared_path, preview_path, tape_width,
+            low_res=config.ui.get("low_res_preview", False),
+        )
 
         pages.append({
             "page_num": page_num,

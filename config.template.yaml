@@ -72,6 +72,10 @@ ui:
   # Show a preview before printing. Set to false for "print without preview" mode.
   show_preview: true
 
+  # Use a low-resolution (400px) preview instead of the full print-resolution image.
+  # Faster but less accurate.
+  low_res_preview: false
+
   # Maximum number of print history entries to keep.
   max_history: 100
 
