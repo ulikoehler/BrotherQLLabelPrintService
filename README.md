@@ -197,6 +197,8 @@ The service automatically determines print orientation based on the document dim
 
 This prevents accidental misprints on labels with non-standard dimensions.
 
+> **See also**: [Processing Pipeline](docs/Pipeline.md) for a detailed step-by-step description of the entire pipeline from upload to print, including all conditionals, intermediate files, and configuration options.
+
 ### Tape Width → Pixel Mapping
 
 | Tape Width (mm) | Printable Pixels (at 300dpi) |
@@ -473,6 +475,8 @@ BrotherQLPrint/
 ├── config.yaml                           # Actual configuration (gitignored)
 ├── requirements.txt                      # Python dependencies
 ├── README.md                             # This file
+├── docs/
+│   └── Pipeline.md                       # Detailed processing pipeline documentation
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI application with all endpoints
