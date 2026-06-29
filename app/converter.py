@@ -121,25 +121,47 @@ def get_pdf_dimensions_mm(pdf_path: str) -> Tuple[float, float]:
     Get the page dimensions of a PDF in millimeters using pdfinfo.
     Returns (width_mm, height_mm) of the first page.
     """
-    result = subprocess.run(
-        ["pdfinfo", "-f", "1", "-l", "1", pdf_path],
-        capture_output=True, text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["pdfinfo", "-f", "1", "-l", "1", pdf_path],
+            capture_output=True, text=True,
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            "pdfinfo command not found. Ensure poppler-utils is installed."
+        )
+
     if result.returncode != 0:
-        raise RuntimeError(f"pdfinfo failed: {result.stderr}")
+        raise RuntimeError(
+            f"pdfinfo exited with code {result.returncode}.\n"
+            f"stdout: {result.stdout}\n"
+            f"stderr: {result.stderr}"
+        )
 
-    # Parse 'Page size: 175.4 x 62.2 pts' or similar
-    match = re.search(r"Page size:\s+([\d.]+)\s+x\s+([\d.]+)\s+pts", result.stdout)
+    # Parse 'Page size: 175.4 x 62.2 pts' or 'Page    1 size:  175.4 x 62.2 pts'
+    # (the latter when -f/-l flags are used). Also handle mm and in units.
+    match = re.search(
+        r"Page\s+(?:\d+\s+)?size:\s+([\d.]+)\s+x\s+([\d.]+)\s*(pts|mm|in)?",
+        result.stdout,
+    )
     if not match:
-        match = re.search(r"Page size:\s+([\d.]+)\s+x\s+([\d.]+)", result.stdout)
-    if not match:
-        raise RuntimeError("Could not parse page size from pdfinfo output")
+        raise RuntimeError(
+            "Could not parse page size from pdfinfo output.\n"
+            f"Full pdfinfo output:\n{result.stdout}"
+        )
 
-    w_pts = float(match.group(1))
-    h_pts = float(match.group(2))
-    # 1 point = 1/72 inch = 25.4/72 mm
-    w_mm = w_pts * 25.4 / 72.0
-    h_mm = h_pts * 25.4 / 72.0
+    w_val = float(match.group(1))
+    h_val = float(match.group(2))
+    unit = match.group(3) or "pts"
+
+    if unit == "mm":
+        w_mm, h_mm = w_val, h_val
+    elif unit == "in":
+        w_mm = w_val * 25.4
+        h_mm = h_val * 25.4
+    else:  # pts
+        w_mm = w_val * 25.4 / 72.0
+        h_mm = h_val * 25.4 / 72.0
     return (round(w_mm, 1), round(h_mm, 1))
 
 
