@@ -42,19 +42,14 @@ def is_accepted_filetype(filename: str) -> bool:
     return detect_file_type(filename) != "unknown"
 
 
-PDF_RENDER_DPI = 600
-
-
 def _convert_pdf(input_path: str, output_dir: str, scale_to: int = 696, scale_axis: str = "y") -> tuple[list[str], list[str]]:
-    """Convert PDF to PNG(s) using pdftoppm at high DPI, then resize with LANCZOS.
+    """Convert PDF to PNG(s) using pdftoppm, directly rasterizing at target pixel dimensions.
     Returns (list of PNG paths, list of debug info strings)."""
-    from PIL import Image
-
     base = Path(input_path).stem
     output_prefix = os.path.join(output_dir, base)
-    # Render at high DPI for better quality, then resize with Pillow
+    flag = "-scale-to-y" if scale_axis == "y" else "-scale-to-x"
     cmd = [
-        "pdftoppm", "-png", "-r", str(PDF_RENDER_DPI),
+        "pdftoppm", "-png", flag, str(scale_to),
         input_path, output_prefix,
     ]
     debug_lines = [
@@ -67,32 +62,14 @@ def _convert_pdf(input_path: str, output_dir: str, scale_to: int = 696, scale_ax
     if not pngs:
         raise RuntimeError("pdftoppm produced no output files")
 
-    debug_lines.append(f"pdftoppm produced {len(pngs)} page(s) at {PDF_RENDER_DPI} DPI")
-    resized_pngs = []
+    debug_lines.append(f"pdftoppm produced {len(pngs)} page(s) at target {scale_axis}={scale_to}px")
+    from PIL import Image
     for idx, png in enumerate(pngs):
         img = Image.open(png)
-        if img.mode != "RGB":
-            img = img.convert("RGB")
         w, h = img.size
         debug_lines.append(f"  Page {idx+1} raw PNG: {png.name} — {w}x{h}px (mode={img.mode})")
-        if scale_axis == "x":
-            new_w = scale_to
-            new_h = int(h * (new_w / w))
-        else:
-            new_h = scale_to
-            new_w = int(w * (new_h / h))
-        debug_lines.append(f"  Page {idx+1} resize: scale_axis={scale_axis}, target={scale_to}px → {new_w}x{new_h}px (LANCZOS)")
-        img = img.resize((new_w, new_h), Image.LANCZOS)
-        resized_path = os.path.join(output_dir, f"{base}_{png.stem}_resized.png")
-        img.save(resized_path, "PNG")
-        resized_pngs.append(resized_path)
-        # Remove temporary high-DPI file
-        try:
-            os.remove(png)
-        except OSError:
-            pass
 
-    return resized_pngs, debug_lines
+    return [str(p) for p in pngs], debug_lines
 
 
 def _convert_svg(input_path: str, output_path: str, width_px: int = 696) -> str:
