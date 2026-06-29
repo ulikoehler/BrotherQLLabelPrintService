@@ -96,8 +96,13 @@ async function uploadFile(file) {
         const data = await res.json();
         currentFileId = data.file_id;
         currentPreviewData = null;
+        currentPreviewPages = [];
+        currentPreviewPageIdx = 0;
         displayFileInfo(data);
         showToast('File ready', 'success');
+        if (settings && settings.ui.show_preview && data.orientation.accepted) {
+            el('btn-preview').click();
+        }
     } catch (e) {
         showToast(e.message, 'error');
     }

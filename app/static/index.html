@@ -65,6 +65,25 @@
                 </div>
             </div>
 
+            <div id="preview-section" class="preview-section hidden">
+                <h3>Preview <span id="preview-page-indicator" class="page-indicator hidden"></span></h3>
+                <div class="preview-container">
+                    <img id="preview-img" src="" alt="Print preview">
+                </div>
+                <div id="preview-nav" class="preview-nav hidden">
+                    <button id="btn-prev-page" class="btn btn-secondary btn-small" disabled>&larr; Prev</button>
+                    <span id="preview-page-count"></span>
+                    <button id="btn-next-page" class="btn btn-secondary btn-small" disabled>Next &rarr;</button>
+                </div>
+                <div class="preview-info">
+                    <p id="preview-orientation-info"></p>
+                </div>
+                <div class="button-row">
+                    <button id="btn-confirm-print" class="btn btn-primary">Confirm &amp; Print</button>
+                    <button id="btn-cancel-preview" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+
             <div id="file-info" class="file-info hidden">
                 <div class="file-info-grid">
                     <div class="info-card">
@@ -128,24 +147,6 @@
                 </div>
             </div>
 
-            <div id="preview-section" class="preview-section hidden">
-                <h3>Preview <span id="preview-page-indicator" class="page-indicator hidden"></span></h3>
-                <div class="preview-container">
-                    <img id="preview-img" src="" alt="Print preview">
-                </div>
-                <div id="preview-nav" class="preview-nav hidden">
-                    <button id="btn-prev-page" class="btn btn-secondary btn-small" disabled>&larr; Prev</button>
-                    <span id="preview-page-count"></span>
-                    <button id="btn-next-page" class="btn btn-secondary btn-small" disabled>Next &rarr;</button>
-                </div>
-                <div class="preview-info">
-                    <p id="preview-orientation-info"></p>
-                </div>
-                <div class="button-row">
-                    <button id="btn-confirm-print" class="btn btn-primary">Confirm &amp; Print</button>
-                    <button id="btn-cancel-preview" class="btn btn-secondary">Cancel</button>
-                </div>
-            </div>
         </div>
 
         <!-- History Tab -->
