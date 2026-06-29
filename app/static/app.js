@@ -380,21 +380,25 @@ el('btn-save-settings').addEventListener('click', async () => {
 // --- Printer status ---
 
 async function checkPrinterStatus() {
+    const badge = el('printer-status-badge');
+    const ident = settings?.printer?.identifier || 'unknown';
+    const backend = settings?.printer?.backend || 'unknown';
     try {
         const res = await fetch('/api/printer/status');
         const data = await res.json();
-        const badge = el('printer-status-badge');
         if (data.error) {
             badge.className = 'badge badge-offline';
             badge.textContent = 'Printer: Offline';
+            badge.dataset.tooltip = `Backend: ${backend}\nIdentifier: ${ident}\nError: ${data.error}`;
         } else {
             badge.className = 'badge badge-online';
             badge.textContent = `Printer: ${settings?.printer?.model || 'Connected'}`;
+            badge.dataset.tooltip = `Backend: ${backend}\nIdentifier: ${ident}\nStatus: ${data.status || 'OK'}`;
         }
-    } catch {
-        const badge = el('printer-status-badge');
+    } catch (e) {
         badge.className = 'badge badge-unknown';
         badge.textContent = 'Printer: Unknown';
+        badge.dataset.tooltip = `Backend: ${backend}\nIdentifier: ${ident}\nError: ${e.message || 'Unable to reach server'}`;
     }
 }
 
