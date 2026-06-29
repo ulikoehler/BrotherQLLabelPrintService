@@ -2,6 +2,8 @@
 
 A lightweight FastAPI-based web service for printing labels on Brother QL series label printers (e.g. QL-560). Provides a visual web UI for uploading images/PDFs/SVGs, previewing prints, managing a print queue, and configuring printer settings. Deployed via Docker Compose with local volume mounts.
 
+![Brother QL Print Service screenshot](docs/Screenshot-1.png)
+
 ## TLDR Install
 
 ```bash
