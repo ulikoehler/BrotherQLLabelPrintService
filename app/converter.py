@@ -43,17 +43,33 @@ def is_accepted_filetype(filename: str) -> bool:
 
 
 def _convert_pdf(input_path: str, output_dir: str, scale_to: int = 696, scale_axis: str = "y") -> tuple[list[str], list[str]]:
-    """Convert PDF to PNG(s) using pdftoppm, directly rasterizing at target pixel dimensions.
+    """Convert PDF to PNG(s) using pdftoppm at the exact DPI needed for target pixel dimensions.
+    Uses -r DPI to preserve aspect ratio (pdftoppm -scale-to-x/-scale-to-y does NOT preserve
+    aspect ratio when only one axis is specified).
     Returns (list of PNG paths, list of debug info strings)."""
     base = Path(input_path).stem
     output_prefix = os.path.join(output_dir, base)
-    flag = "-scale-to-y" if scale_axis == "y" else "-scale-to-x"
+
+    # Get PDF page dimensions in points to compute exact DPI
+    w_mm, h_mm = get_pdf_dimensions_mm(input_path)
+    w_in = w_mm / 25.4
+    h_in = h_mm / 25.4
+
+    if scale_axis == "x":
+        # Target: width = scale_to pixels
+        dpi = round(scale_to / w_in) if w_in > 0 else 300
+    else:
+        # Target: height = scale_to pixels
+        dpi = round(scale_to / h_in) if h_in > 0 else 300
+
     cmd = [
-        "pdftoppm", "-png", flag, str(scale_to),
+        "pdftoppm", "-png", "-r", str(dpi),
         input_path, output_prefix,
     ]
     debug_lines = [
         f"pdftoppm command: {' '.join(cmd)}",
+        f"PDF page: {w_mm}x{h_mm}mm ({w_in:.4f}x{h_in:.4f}in)",
+        f"Computed DPI: {dpi} (target {scale_axis}={scale_to}px)",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -62,7 +78,7 @@ def _convert_pdf(input_path: str, output_dir: str, scale_to: int = 696, scale_ax
     if not pngs:
         raise RuntimeError("pdftoppm produced no output files")
 
-    debug_lines.append(f"pdftoppm produced {len(pngs)} page(s) at target {scale_axis}={scale_to}px")
+    debug_lines.append(f"pdftoppm produced {len(pngs)} page(s)")
     from PIL import Image
     for idx, png in enumerate(pngs):
         img = Image.open(png)
