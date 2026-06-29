@@ -42,14 +42,23 @@ def is_accepted_filetype(filename: str) -> bool:
     return detect_file_type(filename) != "unknown"
 
 
-def _convert_pdf(input_path: str, output_dir: str, scale_to: int = 696, scale_axis: str = "y") -> list[str]:
-    """Convert PDF to PNG(s) using pdftoppm. Returns list of PNG paths."""
+PDF_RENDER_DPI = 600
+
+
+def _convert_pdf(input_path: str, output_dir: str, scale_to: int = 696, scale_axis: str = "y") -> tuple[list[str], list[str]]:
+    """Convert PDF to PNG(s) using pdftoppm at high DPI, then resize with LANCZOS.
+    Returns (list of PNG paths, list of debug info strings)."""
+    from PIL import Image
+
     base = Path(input_path).stem
     output_prefix = os.path.join(output_dir, base)
-    flag = "-scale-to-y" if scale_axis == "y" else "-scale-to-x"
+    # Render at high DPI for better quality, then resize with Pillow
     cmd = [
-        "pdftoppm", "-png", flag, str(scale_to),
+        "pdftoppm", "-png", "-r", str(PDF_RENDER_DPI),
         input_path, output_prefix,
+    ]
+    debug_lines = [
+        f"pdftoppm command: {' '.join(cmd)}",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -57,7 +66,33 @@ def _convert_pdf(input_path: str, output_dir: str, scale_to: int = 696, scale_ax
     pngs = sorted(Path(output_dir).glob(f"{base}*.png"))
     if not pngs:
         raise RuntimeError("pdftoppm produced no output files")
-    return [str(p) for p in pngs]
+
+    debug_lines.append(f"pdftoppm produced {len(pngs)} page(s) at {PDF_RENDER_DPI} DPI")
+    resized_pngs = []
+    for idx, png in enumerate(pngs):
+        img = Image.open(png)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        w, h = img.size
+        debug_lines.append(f"  Page {idx+1} raw PNG: {png.name} — {w}x{h}px (mode={img.mode})")
+        if scale_axis == "x":
+            new_w = scale_to
+            new_h = int(h * (new_w / w))
+        else:
+            new_h = scale_to
+            new_w = int(w * (new_h / h))
+        debug_lines.append(f"  Page {idx+1} resize: scale_axis={scale_axis}, target={scale_to}px → {new_w}x{new_h}px (LANCZOS)")
+        img = img.resize((new_w, new_h), Image.LANCZOS)
+        resized_path = os.path.join(output_dir, f"{base}_{png.stem}_resized.png")
+        img.save(resized_path, "PNG")
+        resized_pngs.append(resized_path)
+        # Remove temporary high-DPI file
+        try:
+            os.remove(png)
+        except OSError:
+            pass
+
+    return resized_pngs, debug_lines
 
 
 def _convert_svg(input_path: str, output_path: str, width_px: int = 696) -> str:
@@ -86,20 +121,21 @@ def convert_to_png(
     output_dir: str,
     tape_width_mm: int = 62,
     orientation: Optional[str] = None,
-) -> list[str]:
+) -> tuple[list[str], list[str]]:
     """
     Convert any supported file to PNG(s).
-    Returns list of paths to generated PNG files.
+    Returns (list of paths to generated PNG files, list of debug info strings).
 
     For PDFs:
-      - portrait (width=tape): use --scale-to-x to scale width to pixel_width
-      - landscape (height=tape): use --scale-to-y to scale height to pixel_width
-      - unknown: use --scale-to-y as default (user's original workflow)
+      - portrait (width=tape): scale width to pixel_width
+      - landscape (height=tape): scale height to pixel_width
+      - unknown: use scale-to-y as default (user's original workflow)
     For SVGs: scale width to pixel_width.
     For images: convert to PNG as-is.
     """
     pixel_width = TAPE_PIXEL_MAP.get(tape_width_mm, 696)
     file_type = detect_file_type(input_path)
+    debug_lines = []
 
     if file_type == "pdf":
         if orientation == "portrait":
@@ -108,10 +144,13 @@ def convert_to_png(
             return _convert_pdf(input_path, output_dir, scale_to=pixel_width, scale_axis="y")
     elif file_type == "svg":
         out = os.path.join(output_dir, Path(input_path).stem + ".png")
-        return [_convert_svg(input_path, out, width_px=pixel_width)]
+        debug_lines.append(f"rsvg-convert: -w {pixel_width} {input_path} → {out}")
+        return [_convert_svg(input_path, out, width_px=pixel_width)], debug_lines
     elif file_type == "image":
         out = os.path.join(output_dir, Path(input_path).stem + ".png")
-        return [_convert_image(input_path, out)]
+        img = Image.open(input_path)
+        debug_lines.append(f"Image convert: {input_path} → {out} ({img.size[0]}x{img.size[1]}px)")
+        return [_convert_image(input_path, out)], debug_lines
     else:
         raise ValueError(f"Unsupported file type: {input_path}")
 

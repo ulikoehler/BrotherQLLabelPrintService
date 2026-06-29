@@ -217,7 +217,7 @@ async def upload_file(file: UploadFile = File(...)):
     # Convert to PNG with appropriate orientation
     convert_dir = str(prints_dir)
     try:
-        png_paths = convert_to_png(
+        png_paths, convert_debug = convert_to_png(
             str(stored_path), convert_dir, tape_width,
             orientation=orient_result.orientation,
         )
@@ -286,7 +286,7 @@ async def create_preview(req: PreviewRequest):
     # Convert to PNG with appropriate orientation
     png_dir = str(prints_dir)
     try:
-        png_paths = convert_to_png(
+        png_paths, convert_debug = convert_to_png(
             str(upload_path), png_dir, tape_width,
             orientation=orient_result.orientation,
         )
@@ -307,6 +307,11 @@ async def create_preview(req: PreviewRequest):
             needs_resize=orient_result.needs_resize,
         )
 
+        # Capture prepared image dimensions for debug
+        from PIL import Image as _Img
+        _pw, _ph = _Img.open(prepared_path).size
+        convert_debug.append(f"  Page {page_num} prepared: {prepared_path} — {_pw}x{_ph}px")
+
         preview_path = str(previews_dir / f"{preview_id}.png")
         generate_preview(prepared_path, preview_path, tape_width)
 
@@ -325,6 +330,7 @@ async def create_preview(req: PreviewRequest):
         "needs_resize": orient_result.needs_resize,
         "reason": orient_result.reason,
         "dimensions_mm": {"width": w_mm, "height": h_mm},
+        "debug_info": convert_debug,
     }
 
 
@@ -377,7 +383,7 @@ async def print_file(req: PrintRequest):
     # Convert to PNG with appropriate orientation
     png_dir = str(prints_dir)
     try:
-        png_paths = convert_to_png(
+        png_paths, convert_debug = convert_to_png(
             str(upload_path), png_dir, tape_width,
             orientation=orient_result.orientation,
         )
@@ -412,6 +418,23 @@ async def print_file(req: PrintRequest):
                 detail=f"Failed to process page {idx + 1} of {len(png_paths)}: {str(e)}",
             )
         prepared_paths.append(prepared_path)
+        # Capture prepared image dimensions for debug
+        from PIL import Image as _Img
+        _pw, _ph = _Img.open(prepared_path).size
+        convert_debug.append(f"  Page {idx+1} prepared: {prepared_path} — {_pw}x{_ph}px")
+
+    # Build debug info string
+    debug_info = "\n".join(convert_debug)
+    debug_info += f"\nOriginal dimensions: {w_mm}x{h_mm}mm"
+    debug_info += f"\nOrientation: {orient_result.orientation}, rotation: {orient_result.rotation}°"
+    debug_info += f"\nneeds_resize: {orient_result.needs_resize}"
+    debug_info += f"\nTape width: {tape_width}mm (pixel_width: {TAPE_PIXEL_MAP.get(tape_width, 696)})"
+    debug_info += f"\nCopies: {req.copies}, Pages: {len(prepared_paths)}"
+    debug_info += f"\nLabel: {label}"
+    for idx, p in enumerate(prepared_paths):
+        from PIL import Image as _Img
+        _w, _h = _Img.open(p).size
+        debug_info += f"\nFinal print image {idx+1}: {p} — {_w}x{_h}px"
 
     # Generate preview for first page if enabled
     if config.ui["show_preview"] and prepared_paths:
@@ -436,6 +459,7 @@ async def print_file(req: PrintRequest):
         preview_filename=preview_filename,
         stored_filenames=prepared_paths,
         num_pages=num_pages,
+        debug_info=debug_info,
     )
     queue.add(item)
 

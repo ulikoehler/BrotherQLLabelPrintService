@@ -447,6 +447,36 @@ body {
     flex-shrink: 0;
 }
 
+.history-debug {
+    margin-top: 8px;
+    width: 100%;
+}
+
+.history-debug summary {
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    user-select: none;
+}
+
+.history-debug summary:hover {
+    color: var(--text);
+}
+
+.history-debug pre {
+    margin-top: 8px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+    color: var(--text-dim);
+}
+
 /* Settings */
 .settings-header {
     display: flex;

@@ -295,6 +295,10 @@ async function loadHistory() {
                 ? `<span style="color:var(--error)">Page error: ${item.page_error}</span>`
                 : (item.error_message ? `<span style="color:var(--error)">Error: ${item.error_message}</span>` : '');
 
+            const debugSection = item.debug_info
+                ? `<details class="history-debug"><summary>Debug details</summary><pre>${item.debug_info}</pre></details>`
+                : '';
+
             return `
                 <div class="history-item">
                     ${thumb}
@@ -307,6 +311,7 @@ async function loadHistory() {
                             <span>Copies: ${item.copies}</span>
                             ${errorInfo}
                         </div>
+                        ${debugSection}
                     </div>
                     <div class="history-actions">
                         <span class="history-status ${statusClass}">${item.status}</span>
